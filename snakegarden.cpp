@@ -19,6 +19,9 @@
 
 #include <iostream>
 #include <SFML/Graphics.hpp>
+#include <vector>
+#include <cstdlib>
+#include <ctime>
 
 /******************************************************************************************
 
@@ -56,6 +59,14 @@ public:
         snake[0].move(direcao);
     }
 
+    void grow() {
+        // ADD 1 BLOCO
+        sf::RectangleShape bloco(sf::Vector2f(blocoSize, blocoSize));
+        bloco.setFillColor(sf::Color::Green);
+        bloco.setPosition(snake.back().getPosition());
+        snake.push_back(bloco);
+    }
+
     void setDirection(sf::Keyboard::Key key) {
         // CONTROLE DE DIRECAO
         if (key == sf::Keyboard::Up && direcao.y == 0.f) direcao = sf::Vector2f(0.f, -blocoSize);
@@ -69,6 +80,46 @@ public:
         for (const auto& bloco : snake) {
             window.draw(bloco);
         }
+    }
+
+    // CHECA A COLISÃO DA SNAKE COM OUTROS OBJETOS(RATO)
+    bool checkCollision(const sf::RectangleShape& other) const {
+        return snake[0].getGlobalBounds().intersects(other.getGlobalBounds());
+    }
+};
+
+/******************************************************************************************
+
+        '||''|.             .        ..|'''.| '||
+         ||   ||   ....   .||.     .|'     '   ||   ....    ....   ....
+         ||''|'   '' .||   ||      ||          ||  '' .||  ||. '  ||. '
+         ||   |.  .|' ||   ||      '|.      .  ||  .|' ||  . '|.. . '|..
+        .||.  '|' '|..'|'  '|.'     ''|....'  .||. '|..'|' |'..|' |'..|'
+
+******************************************************************************************/
+
+class Rat {
+private:
+    sf::RectangleShape bloco;
+    const float blocoSize;
+
+public:
+    Rat(float blocoSize) : blocoSize(blocoSize) {
+        bloco.setSize(sf::Vector2f(blocoSize, blocoSize));
+        bloco.setFillColor(sf::Color::White);
+        move();
+    }
+
+    void move() {
+        bloco.setPosition(static_cast<float>(rand() % 40) * blocoSize, static_cast<float>(rand() % 30) * blocoSize);
+    }
+
+    void draw(sf::RenderWindow& window) {
+        window.draw(bloco);
+    }
+
+    const sf::RectangleShape& getShape() const {
+        return bloco;
     }
 };
 
@@ -87,12 +138,13 @@ class Game
 private:
     sf::RenderWindow janela;
     Snake snake;
+    Rat rat;
     sf::Clock clock;
     const float updateTime;
     float elapsedTime;
 
 
-    // ENTRADA
+    // ENTRADA DO USUARIO
     void handleEvents() {
         sf::Event event;
         while (janela.pollEvent(event)) {
@@ -111,17 +163,26 @@ private:
         if (elapsedTime >= updateTime) {
             elapsedTime -= updateTime;
             snake.move();
+
+            // COLISAO COM O RATO
+            if (snake.checkCollision(rat.getShape())) {
+                snake.grow();
+                rat.move();
+            }
         }
     }
 
     void render() {
         janela.clear();
         snake.draw(janela);
+        rat.draw(janela);
         janela.display();
     }
 
 public:
-    Game() : janela(sf::VideoMode(800, 600), "Snake Garden -< Sketch >- "), updateTime(0.2f), elapsedTime(0.f) {}
+    Game() : janela(sf::VideoMode(800, 600), "Snake Garden -< Sketch >- "), updateTime(0.2f), elapsedTime(0.f), rat(20.f) {
+        std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    }
 
     void run() {
         // MAIN LOOP
